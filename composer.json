@@ -19,13 +19,11 @@
             "role": "Developer"
         }
     ],
-    "autoload": {
-        "psr-0": {
-            "phpagi": "phpagi"
-        }
-    },
     "require": {
         "php": ">=5.1.0"
 
-    }
+    },
+    "autoload" : {
+        "files" : ["phpagi.php"]
+     }
 }

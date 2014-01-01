@@ -1,0 +1,31 @@
+{
+    "name": "d4rkstar/phpagi",
+    "type": "library",
+    "description": "PHPAGI is a PHP class for the Asterisk Gateway Interface. The package is available for use and distribution under the terms of the GNU Public License.",
+    "keywords": ["asterisk","agi","client","call","flow","ivr","telephony","voip"],
+    "homepage": "http://phpagi.sourceforge.net/",
+    "license": "GNU LGPL",
+    "authors": [
+        {
+            "name": "Florian Overkamp",
+            "email": "florian@speakup.nl",
+            "homepage": "http://phpagi.sourceforge.net/",
+            "role": "Developer"
+        },
+        {
+            "name": "David Eder",
+            "email": "david@eder.us",
+            "homepage": "http://phpagi.sourceforge.net/",
+            "role": "Developer"
+        }
+    ],
+    "autoload": {
+        "psr-0": {
+            "PAGI": "phpagi"
+        }
+    },
+    "require": {
+        "php": ">=5.1.0"
+
+    }
+}

@@ -75,10 +75,10 @@
    /**
     * Parent AGI
     *
-    * @access private
+    * @access public
     * @var AGI
     */
-    private $pagi;
+    public $pagi;
 
    /**
     * Event Handlers

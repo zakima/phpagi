@@ -1690,7 +1690,7 @@ class AGI
     function which($cmd, $checkpath=NULL)
     {
         global $_ENV;
-        $chpath = is_null($checkpath) ? $_ENV['PATH'] : $checkpath;
+        $chpath = is_null($checkpath) ? (isset($_ENV['PATH']) ? $_ENV['PATH'] : '') : $checkpath;
 
         foreach(explode(':', $chpath) as $path)
           if(is_executable("$path/$cmd"))

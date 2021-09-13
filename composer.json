@@ -38,5 +38,9 @@
 	"require": {
 		"php": ">=7.2"
 	},
-	"autoload": {}
+	"autoload": {
+		"psr-4": {
+			"mdc\\phpagi\\": "./"
+		}
+	}
 }

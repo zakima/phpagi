@@ -27,29 +27,6 @@ namespace mdc\phpagi;
  * @package phpAGI
  * @version 2.20
  */
-define('AST_CONFIG_DIR', '/etc/asterisk/');
-define('AST_SPOOL_DIR', '/var/spool/asterisk/');
-define('AST_TMP_DIR', AST_SPOOL_DIR . '/tmp/');
-define('DEFAULT_PHPAGI_CONFIG', AST_CONFIG_DIR . '/phpagi.conf');
-
-define('AST_DIGIT_ANY', '0123456789#*');
-
-define('AGIRES_OK', 200);
-
-define('AST_STATE_DOWN', 0);
-define('AST_STATE_RESERVED', 1);
-define('AST_STATE_OFFHOOK', 2);
-define('AST_STATE_DIALING', 3);
-define('AST_STATE_RING', 4);
-define('AST_STATE_RINGING', 5);
-define('AST_STATE_UP', 6);
-define('AST_STATE_BUSY', 7);
-define('AST_STATE_DIALING_OFFHOOK', 8);
-define('AST_STATE_PRERING', 9);
-
-define('AUDIO_FILENO', 3);
-
-// STDERR_FILENO + 1
 
 /**
  * AGI class
@@ -134,6 +111,40 @@ class AGI
      */
     public $option_delim = ",";
 
+    const AST_CONFIG_DIR = '/etc/asterisk/';
+
+    const AST_SPOOL_DIR = '/var/spool/asterisk/';
+
+    const AST_TMP_DIR = self::AST_SPOOL_DIR . '/tmp/';
+
+    const DEFAULT_PHPAGI_CONFIG = self::AST_CONFIG_DIR . '/phpagi.conf';
+
+    const AST_DIGIT_ANY = '0123456789#*';
+
+    const AGIRES_OK = 200;
+
+    const AST_STATE_DOWN = 0;
+
+    const AST_STATE_RESERVED = 1;
+
+    const AST_STATE_OFFHOOK = 2;
+
+    const AST_STATE_DIALING = 3;
+
+    const AST_STATE_RING = 4;
+
+    const AST_STATE_RINGING = 5;
+
+    const AST_STATE_UP = 6;
+
+    const AST_STATE_BUSY = 7;
+
+    const AST_STATE_DIALING_OFFHOOK = 8;
+
+    const AST_STATE_PRERING = 9;
+
+    const AUDIO_FILENO = 3;
+
     /**
      * Constructor
      *
@@ -144,11 +155,13 @@ class AGI
      */
     public function __construct($config = NULL, $optconfig = array())
     {
+        static::initialize();
+
         // load config
         if (! is_null($config) && file_exists($config))
             $this->config = parse_ini_file($config, true);
-        elseif (file_exists(DEFAULT_PHPAGI_CONFIG))
-            $this->config = parse_ini_file(DEFAULT_PHPAGI_CONFIG, true);
+        elseif (file_exists(static::DEFAULT_PHPAGI_CONFIG))
+            $this->config = parse_ini_file(static::DEFAULT_PHPAGI_CONFIG, true);
 
         // If optconfig is specified, stuff vals and vars into 'phpagi' config array.
         foreach ($optconfig as $var => $val)
@@ -162,7 +175,7 @@ class AGI
         if (! isset($this->config['phpagi']['admin']))
             $this->config['phpagi']['admin'] = NULL;
         if (! isset($this->config['phpagi']['tempdir']))
-            $this->config['phpagi']['tempdir'] = AST_TMP_DIR;
+            $this->config['phpagi']['tempdir'] = static::AST_TMP_DIR;
 
         // festival TTS config
         if (! isset($this->config['festival']['text2wave']))
@@ -251,34 +264,34 @@ class AGI
             case - 1:
                 $ret['data'] = trim("There is no channel that matches $channel");
                 break;
-            case AST_STATE_DOWN:
+            case static::AST_STATE_DOWN:
                 $ret['data'] = 'Channel is down and available';
                 break;
-            case AST_STATE_RESERVED:
+            case static::AST_STATE_RESERVED:
                 $ret['data'] = 'Channel is down, but reserved';
                 break;
-            case AST_STATE_OFFHOOK:
+            case static::AST_STATE_OFFHOOK:
                 $ret['data'] = 'Channel is off hook';
                 break;
-            case AST_STATE_DIALING:
+            case static::AST_STATE_DIALING:
                 $ret['data'] = 'Digits (or equivalent) have been dialed';
                 break;
-            case AST_STATE_RING:
+            case static::AST_STATE_RING:
                 $ret['data'] = 'Line is ringing';
                 break;
-            case AST_STATE_RINGING:
+            case static::AST_STATE_RINGING:
                 $ret['data'] = 'Remote end is ringing';
                 break;
-            case AST_STATE_UP:
+            case static::AST_STATE_UP:
                 $ret['data'] = 'Line is up';
                 break;
-            case AST_STATE_BUSY:
+            case static::AST_STATE_BUSY:
                 $ret['data'] = 'Line is busy';
                 break;
-            case AST_STATE_DIALING_OFFHOOK:
+            case static::AST_STATE_DIALING_OFFHOOK:
                 $ret['data'] = 'Digits (or equivalent) have been dialed while offhook';
                 break;
-            case AST_STATE_PRERING:
+            case static::AST_STATE_PRERING:
                 $ret['data'] = 'Channel has detected an incoming call and is waiting for ring';
                 break;
             default:
@@ -998,12 +1011,12 @@ class AGI
         }
         if ($buffer == '' || $proceed) {
             $res = $this->say_digits($digits, $escape_digits);
-            if ($res['code'] == AGIRES_OK && $res['result'] > 0)
+            if ($res['code'] == static::AGIRES_OK && $res['result'] > 0)
                 $buffer .= chr($res['result']);
             return $res;
         }
         return array(
-            'code' => AGIRES_OK,
+            'code' => static::AGIRES_OK,
             'result' => ord($buffer[strlen($buffer) - 1])
         );
     }
@@ -1028,12 +1041,12 @@ class AGI
         }
         if ($buffer == '' || $proceed) {
             $res = $this->say_number($number, $escape_digits);
-            if ($res['code'] == AGIRES_OK && $res['result'] > 0)
+            if ($res['code'] == static::AGIRES_OK && $res['result'] > 0)
                 $buffer .= chr($res['result']);
             return $res;
         }
         return array(
-            'code' => AGIRES_OK,
+            'code' => static::AGIRES_OK,
             'result' => ord($buffer[strlen($buffer) - 1])
         );
     }
@@ -1058,12 +1071,12 @@ class AGI
         }
         if ($buffer == '' || $proceed) {
             $res = $this->say_phonetic($text, $escape_digits);
-            if ($res['code'] == AGIRES_OK && $res['result'] > 0)
+            if ($res['code'] == static::AGIRES_OK && $res['result'] > 0)
                 $buffer .= chr($res['result']);
             return $res;
         }
         return array(
-            'code' => AGIRES_OK,
+            'code' => static::AGIRES_OK,
             'result' => ord($buffer[strlen($buffer) - 1])
         );
     }
@@ -1089,12 +1102,12 @@ class AGI
         }
         if ($buffer == '' || $proceed) {
             $res = $this->say_time($time, $escape_digits);
-            if ($res['code'] == AGIRES_OK && $res['result'] > 0)
+            if ($res['code'] == static::AGIRES_OK && $res['result'] > 0)
                 $buffer .= chr($res['result']);
             return $res;
         }
         return array(
-            'code' => AGIRES_OK,
+            'code' => static::AGIRES_OK,
             'result' => ord($buffer[strlen($buffer) - 1])
         );
     }
@@ -1125,12 +1138,12 @@ class AGI
         }
         if ($buffer == '' || $proceed) {
             $res = $this->stream_file($filename, $escape_digits, $offset);
-            if ($res['code'] == AGIRES_OK && $res['result'] > 0)
+            if ($res['code'] == static::AGIRES_OK && $res['result'] > 0)
                 $buffer .= chr($res['result']);
             return $res;
         }
         return array(
-            'code' => AGIRES_OK,
+            'code' => static::AGIRES_OK,
             'result' => ord($buffer[strlen($buffer) - 1]),
             'endpos' => 0
         );
@@ -1157,12 +1170,12 @@ class AGI
         }
         if ($buffer == '' || $proceed) {
             $res = $this->text2wav($text, $escape_digits, $frequency);
-            if ($res['code'] == AGIRES_OK && $res['result'] > 0)
+            if ($res['code'] == static::AGIRES_OK && $res['result'] > 0)
                 $buffer .= chr($res['result']);
             return $res;
         }
         return array(
-            'code' => AGIRES_OK,
+            'code' => static::AGIRES_OK,
             'result' => ord($buffer[strlen($buffer) - 1]),
             'endpos' => 0
         );
@@ -1189,12 +1202,12 @@ class AGI
         }
         if ($buffer == '' || $proceed) {
             $res = $this->swift($text, $escape_digits, $frequency, $voice);
-            if ($res['code'] == AGIRES_OK && $res['result'] > 0)
+            if ($res['code'] == static::AGIRES_OK && $res['result'] > 0)
                 $buffer .= chr($res['result']);
             return $res;
         }
         return array(
-            'code' => AGIRES_OK,
+            'code' => static::AGIRES_OK,
             'result' => ord($buffer[strlen($buffer) - 1]),
             'endpos' => 0
         );
@@ -1220,12 +1233,12 @@ class AGI
         }
         if ($buffer == '' || $proceed) {
             $res = $this->say_punctuation($text, $escape_digits, $frequency);
-            if ($res['code'] == AGIRES_OK && $res['result'] > 0)
+            if ($res['code'] == static::AGIRES_OK && $res['result'] > 0)
                 $buffer .= chr($res['result']);
             return $res;
         }
         return array(
-            'code' => AGIRES_OK,
+            'code' => static::AGIRES_OK,
             'result' => ord($buffer[strlen($buffer) - 1])
         );
     }
@@ -1275,13 +1288,13 @@ class AGI
         if (is_null($max_digits) || strlen($buffer) < $max_digits) {
             if ($buffer == '') {
                 $res = $this->get_data($filename, $timeout, $max_digits);
-                if ($res['code'] == AGIRES_OK)
+                if ($res['code'] == static::AGIRES_OK)
                     $buffer .= $res['result'];
                 return $res;
             } else {
                 while (is_null($max_digits) || strlen($buffer) < $max_digits) {
                     $res = $this->wait_for_digit();
-                    if ($res['code'] != AGIRES_OK)
+                    if ($res['code'] != static::AGIRES_OK)
                         return $res;
                     if ($res['result'] == ord('#'))
                         break;
@@ -1290,7 +1303,7 @@ class AGI
             }
         }
         return array(
-            'code' => AGIRES_OK,
+            'code' => static::AGIRES_OK,
             'result' => $buffer
         );
     }
@@ -1322,7 +1335,7 @@ class AGI
                 else
                     $ret = $this->stream_file($prompt, $keys);
 
-                if ($ret['code'] != AGIRES_OK || $ret['result'] == - 1) {
+                if ($ret['code'] != static::AGIRES_OK || $ret['result'] == - 1) {
                     $choice = - 1;
                     break;
                 }
@@ -1335,7 +1348,7 @@ class AGI
 
             if (is_null($choice)) {
                 $ret = $this->get_data('beep', $timeout, 1);
-                if ($ret['code'] != AGIRES_OK || $ret['result'] == - 1)
+                if ($ret['code'] != static::AGIRES_OK || $ret['result'] == - 1)
                     $choice = - 1;
                 elseif ($ret['result'] != '' && strpos(' ' . $keys, $ret['result']))
                     $choice = $ret['result'];
@@ -1849,11 +1862,11 @@ class AGI
 
         $ret['result'] = NULL;
         $ret['data'] = '';
-        if ($ret['code'] != AGIRES_OK) // some sort of error
+        if ($ret['code'] != static::AGIRES_OK) // some sort of error
         {
             $ret['data'] = $str;
             $this->conlog(print_r($ret, true));
-        } else // normal AGIRES_OK response
+        } else // normal static::AGIRES_OK response
         {
             $parse = explode(' ', trim($str));
             $in_token = false;

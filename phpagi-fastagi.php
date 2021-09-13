@@ -1,6 +1,7 @@
 #!/usr/local/bin/php -q
 <?php
-use MDC\PhpAgi\AGI;
+use mdc\phpagi\AGI;
+
 /**
  * phpagi-fastagi.php : PHP FastAGI bootstrap
  *

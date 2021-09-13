@@ -1,5 +1,5 @@
 <?php
-namespace MDC\PhpAgi;
+namespace mdc\phpagi;
 
 /**
  * AGI.php : PHP AGI Functions for Asterisk
@@ -27,10 +27,6 @@ namespace MDC\PhpAgi;
  * @package phpAGI
  * @version 2.20
  */
-if (! class_exists('AGI_AsteriskManager')) {
-    require_once (dirname(__FILE__) . DIRECTORY_SEPARATOR . 'phpagi-asmanager.php');
-}
-
 define('AST_CONFIG_DIR', '/etc/asterisk/');
 define('AST_SPOOL_DIR', '/var/spool/asterisk/');
 define('AST_TMP_DIR', AST_SPOOL_DIR . '/tmp/');
@@ -237,7 +233,7 @@ class AGI
      */
     public function answer()
     {
-        return $this->evaluate('ANSWER');
+        return @$this->evaluate('ANSWER');
     }
 
     /**
@@ -1782,7 +1778,7 @@ class AGI
     }
 
     /**
-     * Create a new AGI_AsteriskManager.
+     * Create a new AGIAsteriskManager.
      */
     public function &new_AsteriskManager()
     {

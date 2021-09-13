@@ -1,5 +1,5 @@
 <?php
-namespace MDC\PhpAgi;
+namespace mdc\phpagi;
 
 /**
  * phpagi-asmanager.php : PHP Asterisk Manager functions

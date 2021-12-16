@@ -73,6 +73,12 @@ class AGIAsteriskManager
     public $pagi;
 
     /**
+     *
+     * @var string
+     */
+    public $logLevel = 1;
+
+    /**
      * Event Handlers
      *
      * @access private
@@ -80,6 +86,10 @@ class AGIAsteriskManager
      */
     private $event_handlers;
 
+    /**
+     *
+     * @var string
+     */
     private $_buffer = NULL;
 
     /**
@@ -157,9 +167,19 @@ class AGIAsteriskManager
         return $this->wait_response(false, $actionid);
     }
 
+    /**
+     *
+     * @param boolean $allow_timeout
+     * @throws \Exception
+     * @return array
+     */
     public function read_one_msg($allow_timeout = false)
     {
         $type = null;
+
+        if (! is_resource($this->socket)) {
+            throw new \Exception("Error reading from AMI socket");
+        }
 
         do {
             $buf = fgets($this->socket, 4096);
@@ -193,7 +213,7 @@ class AGIAsteriskManager
             }
         }
 
-        foreach ($msgarr as $num => $str) {
+        foreach ($msgarr as $str) {
             $kv = explode(':', $str, 2);
             if (! isset($kv[1])) {
                 $kv[1] = "";
@@ -967,10 +987,13 @@ class AGIAsteriskManager
      */
     public function log($message, $level = 1)
     {
-        if ($this->pagi != false)
+        if ($this->pagi != false) {
             $this->pagi->conlog($message, $level);
-        elseif ($this->config['asmanager']['write_log'])
-            error_log(date('r') . ' - ' . $message);
+        } elseif ($this->config['asmanager']['write_log']) {
+            if ($level >= $this->logLevel) {
+                error_log(date('r') . ' - ' . $message);
+            }
+        }
     }
 
     /**
@@ -1064,11 +1087,26 @@ class AGIAsteriskManager
         elseif (isset($this->event_handlers['*']))
             $handler = $this->event_handlers['*'];
 
-        if (function_exists($handler)) {
-            $this->log("Execute handler $handler");
-            $ret = $handler($e, $parameters, $this->server, $this->port);
-        } elseif (is_array($handler)) {
-            $ret = call_user_func($handler, $e, $parameters, $this->server, $this->port);
+        if (is_callable($handler)) {
+            if (is_string($handler)) {
+                $this->log("Execute handler $handler");
+            } elseif (is_array($handler)) {
+                if (is_object($handler[0])) {
+                    $class = get_class($handler[0]);
+                    $this->log("Execute handler: " . $class . '->' . $handler[1]);
+                } else {
+                    $this->log("Execute handler: " . $handler[0] . '::' . $handler[1]);
+                }
+            } else {
+                $this->log("Execute handler: " . json_encode($handler));
+            }
+            $ret = call_user_func_array($handler,
+                [
+                    $e,
+                    $parameters,
+                    $this->server,
+                    $this->port
+                ]);
         } else
             $this->log("No event handler for event '$e'");
         return $ret;

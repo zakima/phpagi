@@ -1,4 +1,5 @@
 <?php
+
 namespace mdc\phpagi;
 
 /**
@@ -20,6 +21,8 @@ namespace mdc\phpagi;
  *
  * @package phpAGI
  * @version 2.0
+ * @package mdc/phpagi
+ * @version 1.1.0
  */
 
 /**
@@ -111,7 +114,7 @@ class AGIAsteriskManager
     public function __construct($config = NULL, $optconfig = array())
     {
         // load config
-        if (! is_null($config) && file_exists($config))
+        if (!is_null($config) && file_exists($config))
             $this->config = parse_ini_file($config, true);
         elseif (file_exists(AGI::DEFAULT_PHPAGI_CONFIG))
             $this->config = parse_ini_file(AGI::DEFAULT_PHPAGI_CONFIG, true);
@@ -121,15 +124,15 @@ class AGIAsteriskManager
             $this->config['asmanager'][$var] = $val;
 
         // add default values to config for uninitialized values
-        if (! isset($this->config['asmanager']['server']))
+        if (!isset($this->config['asmanager']['server']))
             $this->config['asmanager']['server'] = 'localhost';
-        if (! isset($this->config['asmanager']['port']))
+        if (!isset($this->config['asmanager']['port']))
             $this->config['asmanager']['port'] = 5038;
-        if (! isset($this->config['asmanager']['username']))
+        if (!isset($this->config['asmanager']['username']))
             $this->config['asmanager']['username'] = 'phpagi';
-        if (! isset($this->config['asmanager']['secret']))
+        if (!isset($this->config['asmanager']['secret']))
             $this->config['asmanager']['secret'] = 'phpagi';
-        if (! isset($this->config['asmanager']['write_log']))
+        if (!isset($this->config['asmanager']['write_log']))
             $this->config['asmanager']['write_log'] = false;
     }
 
@@ -156,7 +159,7 @@ class AGIAsteriskManager
                 }
             }
         }
-        if (! $actionid) {
+        if (!$actionid) {
             $actionid = $this->ActionID();
             $req .= "ActionID: $actionid\r\n";
         }
@@ -177,7 +180,7 @@ class AGIAsteriskManager
     {
         $type = null;
 
-        if (! is_resource($this->socket)) {
+        if (!is_resource($this->socket)) {
             throw new \Exception("Error reading from AMI socket");
         }
 
@@ -193,7 +196,7 @@ class AGIAsteriskManager
                 // there's a full message in the buffer
                 break;
             }
-        } while (! feof($this->socket));
+        } while (!feof($this->socket));
 
         $msg = substr($this->_buffer, 0, $pos);
         $this->_buffer = substr($this->_buffer, $pos + 4);
@@ -215,7 +218,7 @@ class AGIAsteriskManager
 
         foreach ($msgarr as $str) {
             $kv = explode(':', $str, 2);
-            if (! isset($kv[1])) {
+            if (!isset($kv[1])) {
                 $kv[1] = "";
             }
             $key = trim($kv[0]);
@@ -235,7 +238,8 @@ class AGIAsteriskManager
                 break;
             default:
                 $this->log(
-                    'Unhandled response packet from Manager: ' . print_r($parameters, true));
+                    'Unhandled response packet from Manager: ' . print_r($parameters, true)
+                );
                 break;
         }
 
@@ -265,7 +269,7 @@ class AGIAsteriskManager
         if ($actionid) {
             do {
                 $res = $this->read_one_msg($allow_timeout);
-            } while (! (isset($res['ActionID']) && $res['ActionID'] == $actionid));
+            } while (!(isset($res['ActionID']) && $res['ActionID'] == $actionid));
         } else {
             $res = $this->read_one_msg($allow_timeout);
             return $res;
@@ -321,7 +325,8 @@ class AGIAsteriskManager
         $this->socket = @fsockopen($this->server, $this->port, $errno, $errstr);
         if ($this->socket == false) {
             $this->log(
-                "Unable to connect to manager {$this->server}:{$this->port} ($errno): $errstr");
+                "Unable to connect to manager {$this->server}:{$this->port} ($errno): $errstr"
+            );
             return false;
         }
 
@@ -336,11 +341,13 @@ class AGIAsteriskManager
         }
 
         // login
-        $res = $this->send_request('login',
+        $res = $this->send_request(
+            'login',
             array(
                 'Username' => $username,
                 'Secret' => $secret
-            ));
+            )
+        );
         if ($res['Response'] != 'Success') {
             $this->_logged_in = FALSE;
             $this->log("Failed to login.");
@@ -380,11 +387,13 @@ class AGIAsteriskManager
      */
     public function AbsoluteTimeout($channel, $timeout)
     {
-        return $this->send_request('AbsoluteTimeout',
+        return $this->send_request(
+            'AbsoluteTimeout',
             array(
                 'Channel' => $channel,
                 'Timeout' => $timeout
-            ));
+            )
+        );
     }
 
     /**
@@ -398,11 +407,13 @@ class AGIAsteriskManager
      */
     public function ChangeMonitor($channel, $file)
     {
-        return $this->send_request('ChangeMontior',
+        return $this->send_request(
+            'ChangeMontior',
             array(
                 'Channel' => $channel,
                 'File' => $file
-            ));
+            )
+        );
     }
 
     /**
@@ -636,7 +647,7 @@ class AGIAsteriskManager
             $parameters['File'] = $file;
         if ($format)
             $parameters['Format'] = $format;
-        if (! is_null($file))
+        if (!is_null($file))
             $parameters['Mix'] = ($mix) ? 'true' : 'false';
         return $this->send_request('Monitor', $parameters);
     }
@@ -670,10 +681,20 @@ class AGIAsteriskManager
      * @param string $actionid
      *            message matching variable
      */
-    public function Originate($channel, $exten = NULL, $context = NULL, $priority = NULL,
-        $application = NULL, $data = NULL, $timeout = NULL, $callerid = NULL,
-        $variable = NULL, $account = NULL, $async = NULL, $actionid = NULL)
-    {
+    public function Originate(
+        $channel,
+        $exten = NULL,
+        $context = NULL,
+        $priority = NULL,
+        $application = NULL,
+        $data = NULL,
+        $timeout = NULL,
+        $callerid = NULL,
+        $variable = NULL,
+        $account = NULL,
+        $async = NULL,
+        $actionid = NULL
+    ) {
         $parameters = array(
             'Channel' => $channel
         );
@@ -698,7 +719,7 @@ class AGIAsteriskManager
             $parameters['Variable'] = $variable;
         if ($account)
             $parameters['Account'] = $account;
-        if (! is_null($async))
+        if (!is_null($async))
             $parameters['Async'] = ($async) ? 'true' : 'false';
         if ($actionid)
             $parameters['ActionID'] = $actionid;
@@ -764,11 +785,13 @@ class AGIAsteriskManager
      */
     public function QueueRemove($queue, $interface)
     {
-        return $this->send_request('QueueRemove',
+        return $this->send_request(
+            'QueueRemove',
             array(
                 'Queue' => $queue,
                 'Interface' => $interface
-            ));
+            )
+        );
     }
 
     /**
@@ -810,14 +833,16 @@ class AGIAsteriskManager
      */
     public function Redirect($channel, $extrachannel, $exten, $context, $priority)
     {
-        return $this->send_request('Redirect',
+        return $this->send_request(
+            'Redirect',
             array(
                 'Channel' => $channel,
                 'ExtraChannel' => $extrachannel,
                 'Exten' => $exten,
                 'Context' => $context,
                 'Priority' => $priority
-            ));
+            )
+        );
     }
 
     /**
@@ -851,12 +876,14 @@ class AGIAsteriskManager
      */
     public function SetVar($channel, $variable, $value)
     {
-        return $this->send_request('SetVar',
+        return $this->send_request(
+            'SetVar',
             array(
                 'Channel' => $channel,
                 'Variable' => $variable,
                 'Value' => $value
-            ));
+            )
+        );
     }
 
     /**
@@ -899,11 +926,13 @@ class AGIAsteriskManager
      */
     public function ZapDialOffhook($zapchannel, $number)
     {
-        return $this->send_request('ZapDialOffhook',
+        return $this->send_request(
+            'ZapDialOffhook',
             array(
                 'ZapChannel' => $zapchannel,
                 'Number' => $number
-            ));
+            )
+        );
     }
 
     /**
@@ -1100,13 +1129,15 @@ class AGIAsteriskManager
             } else {
                 $this->log("Execute handler: " . json_encode($handler));
             }
-            $ret = call_user_func_array($handler,
+            $ret = call_user_func_array(
+                $handler,
                 [
                     $e,
                     $parameters,
                     $this->server,
                     $this->port
-                ]);
+                ]
+            );
         } else
             $this->log("No event handler for event '$e'");
         return $ret;

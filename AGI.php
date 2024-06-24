@@ -1,4 +1,5 @@
 <?php
+
 namespace mdc\phpagi;
 
 /**
@@ -26,6 +27,8 @@ namespace mdc\phpagi;
  *
  * @package phpAGI
  * @version 2.20
+ * @package mdc/phpagi
+ * @version 1.1.0
  */
 
 /**
@@ -66,6 +69,18 @@ class AGI
      * @access public
      */
     var $request;
+
+    /**
+     * 
+     * @var int
+     */
+    public static $timeoutSecondsInput = 120;
+
+    /**
+     * 
+     * @var int
+     */
+    public static $timeoutSecondsOutput = 120;
 
     /**
      * Config variables
@@ -158,7 +173,7 @@ class AGI
         static::initialize();
 
         // load config
-        if (! is_null($config) && file_exists($config))
+        if (!is_null($config) && file_exists($config))
             $this->config = parse_ini_file($config, true);
         elseif (file_exists(static::DEFAULT_PHPAGI_CONFIG))
             $this->config = parse_ini_file(static::DEFAULT_PHPAGI_CONFIG, true);
@@ -168,21 +183,21 @@ class AGI
             $this->config['phpagi'][$var] = $val;
 
         // add default values to config for uninitialized values
-        if (! isset($this->config['phpagi']['error_handler']))
+        if (!isset($this->config['phpagi']['error_handler']))
             $this->config['phpagi']['error_handler'] = true;
-        if (! isset($this->config['phpagi']['debug']))
+        if (!isset($this->config['phpagi']['debug']))
             $this->config['phpagi']['debug'] = false;
-        if (! isset($this->config['phpagi']['admin']))
+        if (!isset($this->config['phpagi']['admin']))
             $this->config['phpagi']['admin'] = NULL;
-        if (! isset($this->config['phpagi']['tempdir']))
+        if (!isset($this->config['phpagi']['tempdir']))
             $this->config['phpagi']['tempdir'] = static::AST_TMP_DIR;
 
         // festival TTS config
-        if (! isset($this->config['festival']['text2wave']))
+        if (!isset($this->config['festival']['text2wave']))
             $this->config['festival']['text2wave'] = $this->which('text2wave');
 
         // swift TTS config
-        if (! isset($this->config['cepstral']['swift']))
+        if (!isset($this->config['cepstral']['swift']))
             $this->config['cepstral']['swift'] = $this->which('swift');
 
         ob_implicit_flush(true);
@@ -191,11 +206,16 @@ class AGI
         $this->in = defined('STDIN') ? STDIN : fopen('php://stdin', 'r');
         $this->out = defined('STDOUT') ? STDOUT : fopen('php://stdout', 'w');
 
+        $this->setSocketTimeoutInput(static::$timeoutSecondsInput);
+        $this->setSocketTimeoutOutput(static::$timeoutSecondsOutput);
+
+        $this->conlog('PHPAGI Started');
+        $this->conlog('- Socket read timeout set to ' . static::$timeoutSecondsInput . ' seconds');
+        $this->conlog('- Socket write timeout set to ' . static::$timeoutSecondsOutput . ' seconds');
+
         // initialize error handler
         if ($this->config['phpagi']['error_handler'] == true) {
-            set_error_handler('phpagi_error_handler');
-            $GLOBALS['phpagi_error_handler_email'];
-            $GLOBALS['phpagi_error_handler_email'] = $this->config['phpagi']['admin'];
+            set_error_handler([$this, 'phpagiErrorHandler']);
             error_reporting(E_ALL);
         }
 
@@ -206,7 +226,8 @@ class AGI
         $str = fgets($this->in);
         while ($str != "\n") {
             $this->request[substr($str, 0, strpos($str, ':'))] = trim(
-                substr($str, strpos($str, ':') + 1));
+                substr($str, strpos($str, ':') + 1)
+            );
             $str = fgets($this->in);
         }
 
@@ -261,7 +282,7 @@ class AGI
     {
         $ret = $this->evaluate("CHANNEL STATUS $channel");
         switch ($ret['result']) {
-            case - 1:
+            case -1:
                 $ret['data'] = trim("There is no channel that matches $channel");
                 break;
             case static::AST_STATE_DOWN:
@@ -546,7 +567,7 @@ class AGI
      * @return array, see evaluate for return information. ['result'] is 0 on timeout or not supported, -1 on failure. Otherwise
      *         it is the decimal value of the DTMF tone. Use chr() to convert to ASCII.
      */
-    public function receive_char($timeout = - 1)
+    public function receive_char($timeout = -1)
     {
         return $this->evaluate("RECEIVE CHAR $timeout");
     }
@@ -573,13 +594,19 @@ class AGI
      * @return array, see evaluate for return information. ['result'] is -1 on error, 0 on hangup, otherwise a decimal value of the
      *         DTMF tone. Use chr() to convert to ASCII.
      */
-    public function record_file($file, $format, $escape_digits = '', $timeout = - 1,
-        $offset = NULL, $beep = false, $silence = NULL)
-    {
+    public function record_file(
+        $file,
+        $format,
+        $escape_digits = '',
+        $timeout = -1,
+        $offset = NULL,
+        $beep = false,
+        $silence = NULL
+    ) {
         $cmd = trim("RECORD FILE $file $format \"$escape_digits\" $timeout $offset");
         if ($beep)
             $cmd .= ' BEEP';
-        if (! is_null($silence))
+        if (!is_null($silence))
             $cmd .= " s=$silence";
         return $this->evaluate($cmd);
     }
@@ -877,7 +904,7 @@ class AGI
      * @return array, see evaluate for return information. ['result'] is 0 if wait completes with no
      *         digit received, otherwise a decimal value of the DTMF tone. Use chr() to convert to ASCII.
      */
-    public function wait_for_digit($timeout = - 1)
+    public function wait_for_digit($timeout = -1)
     {
         return $this->evaluate("WAIT FOR DIGIT $timeout");
     }
@@ -960,13 +987,21 @@ class AGI
      * @param string $url
      * @return array, see evaluate for return information.
      */
-    public function exec_dial($type, $identifier, $timeout = NULL, $options = NULL,
-        $url = NULL)
-    {
-        return $this->exec('Dial',
+    public function exec_dial(
+        $type,
+        $identifier,
+        $timeout = NULL,
+        $options = NULL,
+        $url = NULL
+    ) {
+        return $this->exec(
+            'Dial',
             trim(
                 "$type/$identifier" . $this->option_delim . $timeout . $this->option_delim .
-                $options . $this->option_delim . $url, $this->option_delim));
+                    $options . $this->option_delim . $url,
+                $this->option_delim
+            )
+        );
     }
 
     /**
@@ -982,9 +1017,13 @@ class AGI
      */
     public function exec_goto($a, $b = NULL, $c = NULL)
     {
-        return $this->exec('Goto',
-            trim($a . $this->option_delim . $b . $this->option_delim . $c,
-                $this->option_delim));
+        return $this->exec(
+            'Goto',
+            trim(
+                $a . $this->option_delim . $b . $this->option_delim . $c,
+                $this->option_delim
+            )
+        );
     }
 
     // *********************************************************************************************************
@@ -1006,7 +1045,7 @@ class AGI
     {
         $proceed = false;
         if ($escape_digits != '' && $buffer != '') {
-            if (! strpos(chr(255) . $escape_digits, $buffer[strlen($buffer) - 1]))
+            if (!strpos(chr(255) . $escape_digits, $buffer[strlen($buffer) - 1]))
                 $proceed = true;
         }
         if ($buffer == '' || $proceed) {
@@ -1036,7 +1075,7 @@ class AGI
     {
         $proceed = false;
         if ($escape_digits != '' && $buffer != '') {
-            if (! strpos(chr(255) . $escape_digits, $buffer[strlen($buffer) - 1]))
+            if (!strpos(chr(255) . $escape_digits, $buffer[strlen($buffer) - 1]))
                 $proceed = true;
         }
         if ($buffer == '' || $proceed) {
@@ -1066,7 +1105,7 @@ class AGI
     {
         $proceed = false;
         if ($escape_digits != '' && $buffer != '') {
-            if (! strpos(chr(255) . $escape_digits, $buffer[strlen($buffer) - 1]))
+            if (!strpos(chr(255) . $escape_digits, $buffer[strlen($buffer) - 1]))
                 $proceed = true;
         }
         if ($buffer == '' || $proceed) {
@@ -1097,7 +1136,7 @@ class AGI
     {
         $proceed = false;
         if ($escape_digits != '' && $buffer != '') {
-            if (! strpos(chr(255) . $escape_digits, $buffer[strlen($buffer) - 1]))
+            if (!strpos(chr(255) . $escape_digits, $buffer[strlen($buffer) - 1]))
                 $proceed = true;
         }
         if ($buffer == '' || $proceed) {
@@ -1128,12 +1167,15 @@ class AGI
      * @return array, see evaluate for return information. ['result'] is -1 on hangup or error, 0 if playback completes with no
      *         digit received, otherwise a decimal value of the DTMF tone. Use chr() to convert to ASCII.
      */
-    public function fastpass_stream_file(&$buffer, $filename, $escape_digits = '',
-        $offset = 0)
-    {
+    public function fastpass_stream_file(
+        &$buffer,
+        $filename,
+        $escape_digits = '',
+        $offset = 0
+    ) {
         $proceed = false;
         if ($escape_digits != '' && $buffer != '') {
-            if (! strpos(chr(255) . $escape_digits, $buffer[strlen($buffer) - 1]))
+            if (!strpos(chr(255) . $escape_digits, $buffer[strlen($buffer) - 1]))
                 $proceed = true;
         }
         if ($buffer == '' || $proceed) {
@@ -1160,12 +1202,15 @@ class AGI
      * @param integer $frequency
      * @return array, see evaluate for return information.
      */
-    public function fastpass_text2wav(&$buffer, $text, $escape_digits = '',
-        $frequency = 8000)
-    {
+    public function fastpass_text2wav(
+        &$buffer,
+        $text,
+        $escape_digits = '',
+        $frequency = 8000
+    ) {
         $proceed = false;
         if ($escape_digits != '' && $buffer != '') {
-            if (! strpos(chr(255) . $escape_digits, $buffer[strlen($buffer) - 1]))
+            if (!strpos(chr(255) . $escape_digits, $buffer[strlen($buffer) - 1]))
                 $proceed = true;
         }
         if ($buffer == '' || $proceed) {
@@ -1192,12 +1237,16 @@ class AGI
      * @param integer $frequency
      * @return array, see evaluate for return information.
      */
-    public function fastpass_swift(&$buffer, $text, $escape_digits = '', $frequency = 8000,
-        $voice = NULL)
-    {
+    public function fastpass_swift(
+        &$buffer,
+        $text,
+        $escape_digits = '',
+        $frequency = 8000,
+        $voice = NULL
+    ) {
         $proceed = false;
         if ($escape_digits != '' && $buffer != '') {
-            if (! strpos(chr(255) . $escape_digits, $buffer[strlen($buffer) - 1]))
+            if (!strpos(chr(255) . $escape_digits, $buffer[strlen($buffer) - 1]))
                 $proceed = true;
         }
         if ($buffer == '' || $proceed) {
@@ -1223,12 +1272,15 @@ class AGI
      * @param integer $frequency
      * @return array, see evaluate for return information.
      */
-    public function fastpass_say_punctuation(&$buffer, $text, $escape_digits = '',
-        $frequency = 8000)
-    {
+    public function fastpass_say_punctuation(
+        &$buffer,
+        $text,
+        $escape_digits = '',
+        $frequency = 8000
+    ) {
         $proceed = false;
         if ($escape_digits != '' && $buffer != '') {
-            if (! strpos(chr(255) . $escape_digits, $buffer[strlen($buffer) - 1]))
+            if (!strpos(chr(255) . $escape_digits, $buffer[strlen($buffer) - 1]))
                 $proceed = true;
         }
         if ($buffer == '' || $proceed) {
@@ -1282,9 +1334,12 @@ class AGI
      *
      *         This differs from other commands with return DTMF as numbers representing ASCII characters.
      */
-    public function fastpass_get_data(&$buffer, $filename, $timeout = NULL,
-        $max_digits = NULL)
-    {
+    public function fastpass_get_data(
+        &$buffer,
+        $filename,
+        $timeout = NULL,
+        $max_digits = NULL
+    ) {
         if (is_null($max_digits) || strlen($buffer) < $max_digits) {
             if ($buffer == '') {
                 $res = $this->get_data($filename, $timeout, $max_digits);
@@ -1335,8 +1390,8 @@ class AGI
                 else
                     $ret = $this->stream_file($prompt, $keys);
 
-                if ($ret['code'] != static::AGIRES_OK || $ret['result'] == - 1) {
-                    $choice = - 1;
+                if ($ret['code'] != static::AGIRES_OK || $ret['result'] == -1) {
+                    $choice = -1;
                     break;
                 }
 
@@ -1348,8 +1403,8 @@ class AGI
 
             if (is_null($choice)) {
                 $ret = $this->get_data('beep', $timeout, 1);
-                if ($ret['code'] != static::AGIRES_OK || $ret['result'] == - 1)
-                    $choice = - 1;
+                if ($ret['code'] != static::AGIRES_OK || $ret['result'] == -1)
+                    $choice = -1;
                 elseif ($ret['result'] != '' && strpos(' ' . $keys, $ret['result']))
                     $choice = $ret['result'];
             }
@@ -1448,16 +1503,17 @@ class AGI
         $fname .= 'text2wav_' . $hash;
 
         // create wave file
-        if (! file_exists("$fname.wav")) {
+        if (!file_exists("$fname.wav")) {
             // write text file
-            if (! file_exists("$fname.txt")) {
+            if (!file_exists("$fname.txt")) {
                 $fp = fopen("$fname.txt", 'w');
                 fputs($fp, $text);
                 fclose($fp);
             }
 
             shell_exec(
-                "{$this->config['festival']['text2wave']} -F $frequency -o $fname.wav $fname.txt");
+                "{$this->config['festival']['text2wave']} -F $frequency -o $fname.wav $fname.txt"
+            );
         } else {
             touch("$fname.txt");
             touch("$fname.wav");
@@ -1469,7 +1525,8 @@ class AGI
         // clean up old files
         $delete = time() - 2592000; // 1 month
         foreach (glob(
-            $this->config['phpagi']['tempdir'] . DIRECTORY_SEPARATOR . 'text2wav_*') as $file)
+            $this->config['phpagi']['tempdir'] . DIRECTORY_SEPARATOR . 'text2wav_*'
+        ) as $file)
             if (filemtime($file) < $delete)
                 unlink($file);
 
@@ -1487,7 +1544,7 @@ class AGI
      */
     public function swift($text, $escape_digits = '', $frequency = 8000, $voice = NULL)
     {
-        if (! is_null($voice))
+        if (!is_null($voice))
             $voice = "-n $voice";
         elseif (isset($this->config['cepstral']['voice']))
             $voice = "-n {$this->config['cepstral']['voice']}";
@@ -1501,16 +1558,17 @@ class AGI
         $fname .= 'swift_' . $hash;
 
         // create wave file
-        if (! file_exists("$fname.wav")) {
+        if (!file_exists("$fname.wav")) {
             // write text file
-            if (! file_exists("$fname.txt")) {
+            if (!file_exists("$fname.txt")) {
                 $fp = fopen("$fname.txt", 'w');
                 fputs($fp, $text);
                 fclose($fp);
             }
 
             shell_exec(
-                "{$this->config['cepstral']['swift']} -p audio/channels=1,audio/sampling-rate=$frequency $voice -o $fname.wav -f $fname.txt");
+                "{$this->config['cepstral']['swift']} -p audio/channels=1,audio/sampling-rate=$frequency $voice -o $fname.wav -f $fname.txt"
+            );
         }
 
         // stream it
@@ -1519,7 +1577,8 @@ class AGI
         // clean up old files
         $delete = time() - 2592000; // 1 month
         foreach (glob(
-            $this->config['phpagi']['tempdir'] . DIRECTORY_SEPARATOR . 'swift_*') as $file)
+            $this->config['phpagi']['tempdir'] . DIRECTORY_SEPARATOR . 'swift_*'
+        ) as $file)
             if (filemtime($file) < $delete)
                 unlink($file);
 
@@ -1667,7 +1726,7 @@ class AGI
                     $text .= $symbol['k' . $code];
             }
             $this->say_punctuation($text);
-        } while (substr($result['result'], - 2) == '**');
+        } while (substr($result['result'], -2) == '**');
         return $text;
     }
 
@@ -1682,7 +1741,7 @@ class AGI
     public function say_punctuation($text, $escape_digits = '', $frequency = 8000)
     {
         $ret = "";
-        for ($i = 0; $i < strlen($text); $i ++) {
+        for ($i = 0; $i < strlen($text); $i++) {
             switch ($text[$i]) {
                 case ' ':
                     $ret .= 'SPACE ';
@@ -1816,12 +1875,12 @@ class AGI
     {
         $broken = array(
             'code' => 500,
-            'result' => - 1,
+            'result' => -1,
             'data' => ''
         );
 
         // write command
-        if (! @fwrite($this->out, trim($command) . "\n"))
+        if (!@fwrite($this->out, trim($command) . "\n"))
             return $broken;
         fflush($this->out);
 
@@ -1833,7 +1892,7 @@ class AGI
         $count = 0;
         do {
             $str = trim(fgets($this->in, 4096));
-        } while ($str == '' && $count ++ < 5);
+        } while ($str == '' && $count++ < 5);
 
         if ($count >= 5) {
             // $this->conlog("evaluate error on read for $command");
@@ -1910,7 +1969,7 @@ class AGI
         static $busy = false;
 
         if ($this->config['phpagi']['debug'] != false) {
-            if (! $busy) // no conlogs inside conlog!!!
+            if (!$busy) // no conlogs inside conlog!!!
             {
                 $busy = true;
                 $this->verbose($str, $vbl);
@@ -1938,9 +1997,11 @@ class AGI
                 return "$path/$cmd";
 
         if (is_null($checkpath))
-            return $this->which($cmd,
+            return $this->which(
+                $cmd,
                 '/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:' .
-                '/usr/X11R6/bin:/usr/local/apache/bin:/usr/local/mysql/bin');
+                    '/usr/X11R6/bin:/usr/local/apache/bin:/usr/local/mysql/bin'
+            );
         return false;
     }
 
@@ -1956,9 +2017,9 @@ class AGI
     {
         $f = explode(DIRECTORY_SEPARATOR, $folder);
         $base = '';
-        for ($i = 0; $i < count($f); $i ++) {
+        for ($i = 0; $i < count($f); $i++) {
             $base .= $f[$i];
-            if ($f[$i] != '' && ! file_exists($base)) {
+            if ($f[$i] != '' && !file_exists($base)) {
                 if (mkdir($base, $perms) == FALSE) {
                     return (FALSE);
                 }
@@ -1967,99 +2028,45 @@ class AGI
         }
         return (TRUE);
     }
-}
 
-/**
- * error handler for phpagi.
- *
- * @param integer $level
- *            PHP error level
- * @param string $message
- *            error message
- * @param string $file
- *            path to file
- * @param integer $line
- *            line number of error
- * @param array $context
- *            variables in the current scope
- */
-function phpagi_error_handler($level, $message, $file, $line, $context)
-{
-    if (ini_get('error_reporting') == 0)
-        return; // this happens with an @
-
-    @syslog(LOG_WARNING, $file . '[' . $line . ']: ' . $message);
-
-    if (function_exists('mail') && ! is_null($GLOBALS['phpagi_error_handler_email'])) // generate email debugging information
+    /**
+     * 
+     * @param mixed $seconds 
+     * @return void 
+     */
+    public function setSocketTimeoutInput($seconds)
     {
-        // decode error level
-        switch ($level) {
-            case E_WARNING:
-            case E_USER_WARNING:
-                $level = "Warning";
-                break;
-            case E_NOTICE:
-            case E_USER_NOTICE:
-                $level = "Notice";
-                break;
-            case E_USER_ERROR:
-                $level = "Error";
-                break;
+        stream_set_timeout($this->in, $seconds);
+    }
+
+    /**
+     * 
+     * @param mixed $seconds 
+     * @return void 
+     */
+    public function setSocketTimeoutOutput($seconds)
+    {
+        stream_set_timeout($this->out, $seconds);
+    }
+
+    /**
+     * error handler for phpagi.
+     *
+     * @param integer $level 
+     *            PHP error level
+     * @param string $message
+     *            error message
+     * @param string $file
+     *            path to file
+     * @param integer $line
+     *            line number of error
+     * @param array $context
+     *            variables in the current scope
+     */
+    public function phpagiErrorHandler($level, $message, $file, $line, $context)
+    {
+        if (ini_get('error_reporting') == 0) {
+            return; // this happens with an @
         }
-
-        // build message
-        $basefile = basename($file);
-        $subject = "$basefile/$line/$level: $message";
-        $message = "$level: $message in $file on line $line\n\n";
-
-        if (function_exists('mysql_errno') && strpos(' ' . strtolower($message), 'mysql'))
-            $message .= 'MySQL error ' . mysql_errno() . ": " . mysql_error() . "\n\n";
-
-        // figure out who we are
-        if (function_exists('socket_create')) {
-            $addr = NULL;
-            $port = 80;
-            $socket = @socket_create(AF_INET, SOCK_DGRAM, SOL_UDP);
-            @socket_connect($socket, '64.0.0.0', $port);
-            @socket_getsockname($socket, $addr, $port);
-            @socket_close($socket);
-            $message .= "\n\nIP Address: $addr\n";
-        }
-
-        // include variables
-        $message .= "\n\nContext:\n" . print_r($context, true);
-        $message .= "\n\nGLOBALS:\n" . print_r($GLOBALS, true);
-        $message .= "\n\nBacktrace:\n" . print_r(debug_backtrace(), true);
-
-        // include code fragment
-        if (file_exists($file)) {
-            $message .= "\n\n$file:\n";
-            $code = @file($file);
-            for ($i = max(0, $line - 10); $i < min($line + 10, count($code)); $i ++)
-                $message .= ($i + 1) . "\t$code[$i]";
-        }
-
-        // make sure message is fully readable (convert unprintable chars to hex representation)
-        $ret = '';
-        for ($i = 0; $i < strlen($message); $i ++) {
-            $c = ord($message[$i]);
-            if ($c == 10 || $c == 13 || $c == 9)
-                $ret .= $message[$i];
-            elseif ($c < 16)
-                $ret .= '\x0' . dechex($c);
-            elseif ($c < 32 || $c > 127)
-                $ret .= '\x' . dechex($c);
-            else
-                $ret .= $message[$i];
-        }
-        $message = $ret;
-
-        // send the mail if less than 5 errors
-        static $mailcount = 0;
-        if ($mailcount < 5)
-            @mail($GLOBALS['phpagi_error_handler_email'], $subject, $message);
-        $mailcount ++;
     }
 }
-
-$GLOBALS['phpagi_error_handler_email'] = NULL;

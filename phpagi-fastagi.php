@@ -1,5 +1,6 @@
 #!/usr/local/bin/php -q
 <?php
+
 use mdc\phpagi\AGI;
 
 /**
@@ -21,6 +22,8 @@ use mdc\phpagi\AGI;
  *
  * @package phpAGI
  * @version 2.0
+ * @package mdc/phpagi
+ * @version 1.1.0
  * @example docs/fastagi.xinetd Example xinetd config file
  */
 
@@ -34,7 +37,7 @@ $fastagi = new AGI();
 
 $fastagi->verbose(print_r($fastagi, true));
 
-if (! isset($fastagi->config['fastagi']['basedir']))
+if (!isset($fastagi->config['fastagi']['basedir']))
     $fastagi->config['fastagi']['basedir'] = dirname(__FILE__);
 
 // perform some security checks
@@ -51,7 +54,7 @@ if (substr($dir, 0, strlen($mydir)) != $mydir) {
 }
 
 // make sure it exists
-if (! file_exists($script)) {
+if (!file_exists($script)) {
     $fastagi->conlog("$script does not exist.");
     exit();
 }
@@ -60,17 +63,19 @@ if (! file_exists($script)) {
 if (isset($fastagi->config['fastagi']['setuid']) && $fastagi->config['fastagi']['setuid']) {
     $owner = fileowner($script);
     $group = filegroup($script);
-    if (! posix_setgid($group) || ! posix_setegid($group) || ! posix_setuid($owner) ||
-        ! posix_seteuid($owner)) {
+    if (
+        !posix_setgid($group) || !posix_setegid($group) || !posix_setuid($owner) ||
+        !posix_seteuid($owner)
+    ) {
         $fastagi->conlog("failed to lower privileges.");
         exit();
     }
 }
 
 // make sure script is still readable
-if (! is_readable($script)) {
+if (!is_readable($script)) {
     $fastagi->conlog("$script is not readable.");
     exit();
 }
 
-require_once ($script);
+require_once($script);

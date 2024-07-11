@@ -223,7 +223,11 @@ class AGIAsteriskManager
             }
             $key = trim($kv[0]);
             $val = trim($kv[1]);
-            $parameters[$key] = $val;
+            if (!isset($parameters[$key])) {
+                $parameters[$key] = $val;
+            } else {
+                $parameters[$key] .= PHP_EOL . $val;
+            }
         }
 
         // process response
@@ -285,6 +289,10 @@ class AGIAsteriskManager
                     $evlist[] = $res;
             } while (true);
             $res['events'] = $evlist;
+        }
+
+        if (isset($res['Output']) && !isset($res['data'])) {
+            $res['data'] = &$res['Output'];
         }
 
         return $res;
